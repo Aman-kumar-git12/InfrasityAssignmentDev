@@ -1,31 +1,35 @@
 <div align="center">
 
-# Notes
+# Notes · Frontend
 
-**A full-stack note-taking app with secure, private notes for every user.**
+**React client for a full-stack note-taking app with secure, private notes for every user.**
 
 ![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![React Router](https://img.shields.io/badge/React_Router-7-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white)
 ![Axios](https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white)
-<br>
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Express](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
-![Mongoose](https://img.shields.io/badge/Mongoose-9-880000?style=for-the-badge&logo=mongoose&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
-[Features](#features) · [How it works](#how-it-works) · [Getting started](#getting-started) · [API](#api) · [Structure](#project-structure)
+**[Live app](https://infrasity-assignment-dev.vercel.app)** · **[Frontend repo](https://github.com/Aman-kumar-git12/InfrasityAssignmentDev)** · **[Backend repo](https://github.com/Aman-kumar-git12/InfrasityAssignmentBackend)**
+
+[Features](#features) · [How it works](#how-it-works) · [Getting started](#getting-started) · [Routes](#routes) · [Deployment](#deployment) · [Structure](#project-structure)
 
 </div>
 
 ---
 
+## Repositories
+
+| Part | Repository | Hosted on |
+| --- | --- | --- |
+| **Frontend** (React + Vite) · *you are here* | [Aman-kumar-git12/InfrasityAssignmentDev](https://github.com/Aman-kumar-git12/InfrasityAssignmentDev) | [Vercel](https://infrasity-assignment-dev.vercel.app) |
+| **Backend** (Express + MongoDB) | [Aman-kumar-git12/InfrasityAssignmentBackend](https://github.com/Aman-kumar-git12/InfrasityAssignmentBackend) | [Render](https://infrasityassignmentbackend.onrender.com/api/health) |
+
 ## Features
 
-- **Auth:** sign up, log in and log out with a JWT stored in an **httpOnly cookie**; passwords hashed with bcrypt
+- **Auth:** sign up, log in and log out; the session lives in an **httpOnly cookie** set by the API
 - **Notes:** create, view, edit and delete, each on its own URL
-- **Privacy:** users only ever see their own notes; anyone else's note returns `404`
+- **Protected routes:** logged-out users are sent to `/login`, logged-in users skip the auth pages
 - **Safe delete:** a confirmation dialog appears before anything is removed
 - **Backend-driven messages:** every success and error message in the UI comes from the API
 - **Clean UI:** dark green-black theme, hamburger sidebar, responsive, plain CSS
@@ -34,115 +38,38 @@
 
 ```mermaid
 flowchart LR
-    UI["React pages"] --> AX["axiosClient<br/>(sends cookie)"]
-    AX -->|HTTP| R["Routes"]
-    R --> MW["Middlewares<br/>protect · validate · id check"]
-    MW --> C["Controllers"]
-    C --> S["Services"]
-    S --> DB[("MongoDB")]
-    MW -. error .-> EH["Error handler"]
-    C -. error .-> EH
-    EH -->|"{ success: false, message }"| AX
+    P["Pages"] --> SV["authService<br/>noteService"]
+    SV --> AX["axiosClient<br/>withCredentials"]
+    AX -->|"HTTP + cookie"| API["Backend API"]
+    API -->|"{ success, message, data }"| AX
+    AX -. "401" .-> AC["AuthContext<br/>logs user out"]
 ```
 
-| Layer | Job |
-| --- | --- |
-| **Routes** | Connect each URL to its middlewares and controller |
-| **Middlewares** | `protect` checks the JWT cookie, validators check the body, `validateObjectId` checks `:id` |
-| **Controllers** | Read the request, call a service, send `{ success, message, data }` |
-| **Services** | One function per file, holding all the database logic |
-| **Error handler** | Turns any error into `{ success: false, message }` with the right status code |
-
-**Ownership.** Every note query filters on both the note id and the logged-in user's id, so another user's note simply isn't found:
-
-```js
-Note.findOne({ _id: noteId, user: req.user.id });
-```
+- **`axiosClient`** sends every request to `${VITE_BACKEND_URL}/api` with the cookie, unwraps `res.data`, and turns errors into `{ status, message }`.
+- **`AuthContext`** loads the current user on startup (`/auth/me`) and logs out automatically when the session expires (any `401`).
+- **`ProtectedRoute` / `PublicRoute`** guard pages based on that user.
 
 ## Getting started
 
-**Prerequisites:** Node.js 20.19+ and a MongoDB database ([Atlas](https://www.mongodb.com/atlas) free tier works).
+**Prerequisites:** Node.js 20.19+ and the [backend](https://github.com/Aman-kumar-git12/InfrasityAssignmentBackend#getting-started) running locally.
 
 ```bash
-# 1. Backend
-cd backend
+git clone https://github.com/Aman-kumar-git12/InfrasityAssignmentDev.git
+cd InfrasityAssignmentDev
 npm install
-cp .env.example .env      # add your MONGO_URI and JWT_SECRET
-npm run dev               # http://localhost:5001
-
-# 2. Frontend (in a new terminal)
-cd frontend
-npm install
-cp .env.example .env
+cp .env.example .env      # points at http://localhost:5001
 npm run dev               # http://localhost:5173
 ```
 
-<details>
-<summary><b>Environment variables</b></summary>
+### Environment variables
 
-**`backend/.env`**
-
-| Variable | Example |
-| --- | --- |
-| `PORT` | `5001` |
-| `NODE_ENV` | `development` |
-| `MONGO_URI` | `mongodb+srv://user:pass@cluster/notes` |
-| `JWT_SECRET` | any long random string |
-| `JWT_EXPIRES_IN` | `7d` |
-| `CLIENT_URL` | `http://localhost:5173` |
-
-**`frontend/.env`**
-
-| Variable | Example |
-| --- | --- |
-| `VITE_BACKEND_URL` | `http://localhost:5001` |
-
-Generate a secret with:
-`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-
-</details>
-
-## API
-
-Base URL `http://localhost:5001/api`. 🔒 = requires the auth cookie.
-
-| Method | Endpoint | Description |
+| Variable | Example | Notes |
 | --- | --- | --- |
-| `GET` | `/health` | Health check |
-| `POST` | `/auth/signup` | Create account and set cookie |
-| `POST` | `/auth/login` | Log in and set cookie |
-| `GET` | `/auth/me` 🔒 | Current user |
-| `POST` | `/auth/logout` 🔒 | Clear cookie |
-| `GET` | `/notes` 🔒 | List your notes |
-| `POST` | `/notes` 🔒 | Create a note `{ title, content }` |
-| `GET` | `/notes/:id` 🔒 | Get a note |
-| `PUT` | `/notes/:id` 🔒 | Update a note |
-| `DELETE` | `/notes/:id` 🔒 | Delete a note |
+| `VITE_BACKEND_URL` | `http://localhost:5001` | Backend origin only. **Don't add `/api`**, the client appends it |
 
-Every response has the same shape:
+`npm run build` fails on purpose if `VITE_BACKEND_URL` is missing, so a broken build never ships.
 
-```jsonc
-// success
-{ "success": true, "message": "Note created successfully", "data": { "note": {} } }
-
-// error
-{ "success": false, "message": "Note not found" }
-```
-
-<details>
-<summary><b>Error responses</b></summary>
-
-| Status | When |
-| --- | --- |
-| `400` | Invalid JSON, failed validation, invalid note id |
-| `401` | No cookie, invalid or expired token, wrong email or password |
-| `404` | Note not found (or not yours), unknown route |
-| `409` | Email already registered |
-| `500` | Unexpected server error |
-
-</details>
-
-## Frontend routes
+## Routes
 
 | Route | Page |
 | --- | --- |
@@ -151,33 +78,41 @@ Every response has the same shape:
 | `/new` | Write a new note |
 | `/saved/:id/viewonly` | Read a note |
 | `/saved/:id/edit` | Edit a note |
+| anything else | 404 page |
+
+## Deployment
+
+Deployed on **Vercel** (framework preset: Vite).
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| `VITE_BACKEND_URL` | `https://infrasityassignmentbackend.onrender.com` |
+
+Set `VITE_BACKEND_URL` under *Settings → Environment Variables*, then redeploy. Vite bakes it in at build time. [`vercel.json`](vercel.json) rewrites every path to `index.html`, so deep links like `/saved/123/edit` work on refresh.
+
+The backend's `CLIENT_URL` must match this site's URL exactly, or the browser will block requests (CORS).
 
 ## Project structure
 
 ```
-backend/src
-├── config/         db.js
-├── controllers/    auth, note
-├── middlewares/    auth (protect), validate, validateObjectId, notFound, error
-├── models/         User, Note
-├── routes/         auth, note
-├── services/       auth/*  notes/*   (one function per file)
-├── utils/          sendResponse, generateToken, cookieOptions
-├── validators/     auth, note
-└── app.js          Express setup, routes, DB connection, server start
-
-frontend/src
+src
 ├── api/            axiosClient
 ├── components/     NotesLayout, Navbar, Sidebar, NoteForm, NoteCard, ConfirmDialog, Alert, Loader, route guards
 ├── context/        AuthContext
 ├── hooks/          useAuth, useFlashAlert
 ├── pages/          Login, Signup, SavedNotes, NoteView, NoteEditor, NotFound
 ├── services/       authService, noteService
-└── styles/         index.css
+├── styles/         index.css
+├── App.jsx         route table
+└── main.jsx        entry point
 ```
 
 ## Troubleshooting
 
-- **CORS error on port 5000 (macOS):** AirPlay Receiver uses port 5000, so this project uses **5001**.
-- **MongoDB won't connect:** check `MONGO_URI`, and on Atlas add your IP under *Network Access*.
+- **Requests go to `undefined/api`:** `VITE_BACKEND_URL` wasn't set at build time. Set it and redeploy.
+- **CORS error:** the backend's `CLIENT_URL` doesn't match the URL you're opening.
+- **Logged out right after logging in:** the backend needs `NODE_ENV=production` on Render. Some browsers (Safari, Brave) also block cross-site cookies.
+- **First load is slow:** the free Render backend sleeps when idle and takes ~30–60 s to wake.
 - **`.env` changes ignored:** restart `npm run dev`.
